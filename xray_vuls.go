@@ -6,20 +6,18 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// Statistics -
-type Statistics struct {
-	AverageResponseTime     float64 `json:"average_response_time"`
-	NumFoundUrls            int64   `json:"num_found_urls"`
-	NumScannedUrls          int64   `json:"num_scanned_urls"`
-	NumSentHTTPRequests     int64   `json:"num_sent_http_requests"`
-	RatioFailedHTTPRequests float64 `json:"ratio_failed_http_requests"`
-}
-
-// WebVul -
+// WebVul - For Xray Webhook
 type WebVul struct {
 	gorm.Model
 	CreateTime int64 `json:"create_time"`
-	Detail     struct {
+
+	NumFoundUrls            int64   `json:"num_found_urls"`             // 发现的 url 数
+	NumScannedUrls          int64   `json:"num_scanned_urls"`           // 扫描完成的 url 数
+	NumSentHTTPRequests     int64   `json:"num_sent_http_requests"`     // 已发送的 http 请求数
+	AverageResponseTime     float64 `json:"average_response_time"`      // 最近 30s 平均响应时间
+	RatioFailedHTTPRequests float64 `json:"ratio_failed_http_requests"` // 最近 30s 请求失败率
+
+	Detail struct {
 		Host  string `json:"host"`
 		Param struct {
 			Key      string `json:"key"`
@@ -66,11 +64,6 @@ type Vul struct {
 	Raw       string `gorm:"type:text" json:"-"`
 }
 
-// vuln_name = models.TextField(blank=True)
-// vuln_type = models.CharField(max_length=256, blank=True)
-// vuln_url = models.CharField(max_length=256)
-// vuln_payload = models.TextField(blank=True)
-
 func newVul(p *Vul) (out *Vul, err error) {
 	if !conn.First(&out, Vul{Domain: p.Domain}).RecordNotFound() {
 		return out, errors.New("record is exists")
@@ -79,6 +72,13 @@ func newVul(p *Vul) (out *Vul, err error) {
 		return p, err
 	}
 	return p, nil
+}
+
+func findVuls(limit, offset int) (outs []*Vul, err error) {
+	if conn.Find(&outs).Limit(limit).Offset(offset).RecordNotFound() {
+		return outs, errors.New("record not found")
+	}
+	return outs, nil
 }
 
 func findVulByID(id uint) (out Vul, err error) {

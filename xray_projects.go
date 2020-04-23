@@ -10,20 +10,22 @@ import (
 type Project struct {
 	gorm.Model
 	Name      string `gorm:"type:varchar(100);unique_index" json:"name"`
-	Domain    string // xxx,xxx,xxx
-	Config    string // config_{name}.yaml
-	Plugins   string
-	Reverse   string
-	Listen    string // Listen Port
-	ProcessID int
+	Domain    string `json:"domain"` // xxx,xxx,xxx
+	Config    string `json:"config"` // config_{name}.yaml
+	Plugins   string `json:"plugins"`
+	Reverse   string `json:"reverse"` // ???
+	Listen    int    `json:"listen"`  // Listen Port
+	ProcessID int    `json:"process_id"`
 	// Worked    bool
 }
 
-func updateProjectPID(id uint, pid int) (out Project, err error) {
-	if !conn.First(&out, Project{Model: gorm.Model{ID: id}}).RecordNotFound() {
-		return out, errors.New("record is exists")
+func updateProjectPidAndListenPort(id uint, pid, port int) (out Project, err error) {
+	if conn.First(&out, Project{Model: gorm.Model{ID: id}}).RecordNotFound() {
+		return out, errors.New("record is not found")
 	}
-	if err := conn.Model(&out).Updates(map[string]interface{}{"process_id": pid}).Error; err != nil {
+	if err := conn.Model(&out).Updates(map[string]interface{}{
+		"process_id": pid, "listen": port,
+	}).Error; err != nil {
 		return out, err
 	}
 	return out, nil

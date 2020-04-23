@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +21,8 @@ import (
 const (
 	configFileName = "config.yaml"
 	loggerFilename = "weblisten.log"
+	xrayConfigPath = "/tmp/"
+	webhook        = "/vul_webhook"
 )
 
 // Config - Config
@@ -36,8 +39,9 @@ type Config struct {
 		Bin  string `yaml:"bin"`
 	} `yaml:"xray"`
 	Server struct {
-		Debug bool `yaml:"debug"`
-		Port  int  `yaml:"port"`
+		Debug bool   `yaml:"debug"`
+		Port  int    `yaml:"port"`
+		Host  string `yaml:"host"`
 	} `yaml:"server"`
 }
 
@@ -138,7 +142,12 @@ func init() {
 		Timeout:   5 * time.Second,
 	}
 	conn, _ = initConnect()
+
+	// Model
+	conn.CreateTable(&Project{}, &Vul{})
+
 	xrayBin = filepath.Join(conf.Xray.Path, conf.Xray.Bin)
+	rand.Seed(time.Now().UnixNano())
 }
 
 // pagination - 分页生成

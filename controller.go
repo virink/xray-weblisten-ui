@@ -1,13 +1,18 @@
 package main
 
 import (
-	"bytes"
+	"fmt"
+	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
 )
 
 func processExists(pid int) bool {
@@ -34,22 +39,37 @@ type Resp struct {
 
 func xrayWebhookHandler(c *gin.Context) {
 	var (
-		// obj WebVul
+		obj WebVul
 		err error
 	)
-	data, err := c.GetRawData()
-	if bytes.Contains(data, []byte("num_found_urls")) {
-		// TODO: Statistics
-	} else {
-		var obj WebVul
-		err = c.ShouldBind(&obj)
-		// TODO: 处理 WebVul
-	}
-	if err != nil {
+	if err = c.Bind(&obj); err != nil {
 		logger.Errorln(err)
 		c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
+		return
+	}
+	logger.Debugln(obj)
+	if obj.CreateTime > 0 {
+		// TODO: Vul
+	} else {
+		// Stat
+		logger.Debugln("State")
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success"})
+}
+
+func portInUse(port int) bool {
+	output, err := exec.Command("/bin/sh", "-c", fmt.Sprintf("lsof -i:%d", port)).CombinedOutput()
+	return err == nil && len(output) > 0
+}
+
+func randomPort() (p int) {
+	for {
+		p = 30000 + rand.Intn(10000)
+		if !portInUse(p) {
+			break
+		}
+	}
+	return
 }
 
 func createProjectHandler(c *gin.Context) {
@@ -63,13 +83,45 @@ func createProjectHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
+	obj.Name = strings.ReplaceAll(strings.ToLower(obj.Name), " ", "_")
+	obj.Config = filepath.Join(xrayConfigPath, fmt.Sprintf("xray_config_%s.yaml", obj.Name))
+	obj.Listen = -1
 	out, err := newProject(obj)
 	if err != nil {
 		logger.Errorln(err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 2, Msg: err.Error()})
 		return
 	}
+	err = writeXrayConfg(out)
+	if err != nil {
+		logger.Errorln(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 2, Msg: err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: out})
+}
+
+func writeXrayConfg(obj Project) (err error) {
+	xrayConf, err := getDefaultXrayConfig()
+	if err != nil {
+		logger.Errorln(err)
+		return
+	}
+	domains := strings.Split(obj.Domain, ",")
+	xrayConf.Mitm.Restriction.Includes = domains
+	// TODO: BasicCrawler
+	// xrayConf.BasicCrawler.Restriction.Includes = domains
+	data, err := yaml.Marshal(&xrayConf)
+	if err != nil {
+		logger.Errorln(err)
+		return
+	}
+	err = ioutil.WriteFile(obj.Config, data, 0666)
+	if err != nil {
+		logger.Errorln(err)
+		return
+	}
+	return nil
 }
 
 func getProjectsHandler(c *gin.Context) {
@@ -115,10 +167,13 @@ func startProjectHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, Resp{Code: 0, Msg: "Already Started!"})
 		return
 	}
+	if obj.Listen <= 0 || portInUse(obj.Listen) {
+		obj.Listen = randomPort()
+	}
 	xrayArgs := []string{
 		"--config", obj.Config,
-		"webscan", "--listen", obj.Listen,
-		"--webhook-output", "http://127.0.0.1:8088" + webhook,
+		"webscan", "--listen", fmt.Sprintf("0.0.0.0:%d", obj.Listen),
+		"--webhook-output", fmt.Sprintf("http://%s:%d%s", conf.Server.Host, conf.Server.Port, webhook),
 		"--plugins", obj.Plugins,
 	}
 	logger.Debugln(xrayArgs)
@@ -128,7 +183,7 @@ func startProjectHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
-	if obj, err = updateProjectPID(obj.ID, pid); err != nil {
+	if obj, err = updateProjectPidAndListenPort(obj.ID, pid, obj.Listen); err != nil {
 		logger.Errorln(err.Error())
 		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
 		return
@@ -156,5 +211,11 @@ func stopProjectHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: obj})
+	out, err := updateProjectPidAndListenPort(uint(id), 0, obj.Listen)
+	if err != nil {
+		logger.Errorln(err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: out})
 }

@@ -39,6 +39,12 @@ func newRouter() *gin.Engine {
 }
 
 func main() {
+
+	if _, err := getDefaultXrayConfig(); err != nil {
+		logger.Errorln(err)
+		return
+	}
+
 	router := newRouter()
 	httpServer := &http.Server{
 		Addr:           fmt.Sprintf(":%d", conf.Server.Port),
