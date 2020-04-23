@@ -38,6 +38,7 @@ type WebVul struct {
 		ExpectedValue string `json:"expected_value"`
 		HeaderName    string `json:"header_name"`
 		HeaderValue   string `json:"header_value"`
+		Filename	  string `json:"filename"`
 	} `json:"detail"`
 	Plugin string `json:"plugin"`
 	Target struct {

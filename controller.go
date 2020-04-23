@@ -47,9 +47,11 @@ func xrayWebhookHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
-	logger.Debugln(obj)
+	//logger.Debugln(obj)
 	if obj.CreateTime > 0 {
 		// TODO: Vul
+		// 根据插件来判断取的json格式输出
+
 	} else {
 		// Stat
 		logger.Debugln("State")
