@@ -28,6 +28,12 @@ func newRouter() *gin.Engine {
 
 	engine.POST(webhook, xrayWebhookHandler)
 	// TODO: AddRouter
+	engine.POST("/project", createProjectHandler)
+	// engine.PUT("/project/:id", updateProjectHandler)
+	engine.GET("/start/:id", startProjectHandler)
+	engine.GET("/stop/:id", stopProjectHandler)
+	engine.GET("/projects", getProjectsHandler)
+	engine.GET("/project/:id", getProjectHandler)
 
 	return engine
 }
@@ -47,6 +53,8 @@ func main() {
 			logger.Errorf("HTTP server listen: %s\n", err)
 		}
 	}()
+
+	logger.Debugf("HTTP Server Listening: http://127.0.0.1:%d", conf.Server.Port)
 
 	// 等待中断信号以优雅地关闭服务器
 	signalChan = make(chan os.Signal)

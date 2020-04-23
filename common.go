@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	// mysql driver
@@ -29,6 +31,10 @@ type Config struct {
 		Name    string `yaml:"name"`
 		Charset string `yaml:"charset"`
 	} `yaml:"mysql"`
+	Xray struct {
+		Path string `yaml:"path"`
+		Bin  string `yaml:"bin"`
+	} `yaml:"xray"`
 	Server struct {
 		Debug bool `yaml:"debug"`
 		Port  int  `yaml:"port"`
@@ -36,11 +42,12 @@ type Config struct {
 }
 
 var (
-	tr     *http.Transport
-	client *http.Client
-	conn   *gorm.DB
-	logger *logrus.Logger
-	conf   Config
+	tr      *http.Transport
+	client  *http.Client
+	conn    *gorm.DB
+	logger  *logrus.Logger
+	conf    Config
+	xrayBin string
 )
 
 func templateConfig() []byte {
@@ -61,7 +68,7 @@ func templateConfig() []byte {
 func loadConfig() (err error) {
 	var yamlFile []byte
 	_, err = os.Stat(configFileName)
-	if err != nil && os.IsExist(err) {
+	if err != nil && os.IsNotExist(err) {
 		if data := templateConfig(); data != nil {
 			if err = ioutil.WriteFile(configFileName, data, 0666); err != nil {
 				return err
@@ -85,7 +92,7 @@ func initLogger(filename string, level logrus.Level) *logrus.Logger {
 	if level == logrus.DebugLevel || level == logrus.InfoLevel {
 		logger.SetFormatter(&logrus.TextFormatter{
 			ForceColors:            true,
-			DisableLevelTruncation: false,
+			DisableLevelTruncation: true,
 			TimestampFormat:        "2006-01-02 15:04:05",
 		})
 		logger.SetOutput(os.Stdout)
@@ -117,6 +124,7 @@ func initConnect() (db *gorm.DB, err error) {
 
 func init() {
 	logger = initLogger(loggerFilename, logrus.DebugLevel)
+	logger.AddHook(NewLogHook())
 	err := loadConfig()
 	if err != nil {
 		logger.Fatalln(err.Error())
@@ -130,4 +138,16 @@ func init() {
 		Timeout:   5 * time.Second,
 	}
 	conn, _ = initConnect()
+	xrayBin = filepath.Join(conf.Xray.Path, conf.Xray.Bin)
+}
+
+// pagination - 分页生成
+// @return limit,offset
+func pagination(page, pageSize string) (int, int) {
+	pageSizeInt, _ := strconv.Atoi(pageSize)
+	pageInt, _ := strconv.Atoi(page)
+	if pageSizeInt < 20 || pageSizeInt > 100 {
+		pageSizeInt = 20
+	}
+	return pageSizeInt, (pageInt - 1) * pageSizeInt
 }

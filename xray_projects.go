@@ -14,19 +14,36 @@ type Project struct {
 	Config    string // config_{name}.yaml
 	Plugins   string
 	Reverse   string
-	Listen    string // 0.0.0.0:nnnnn
+	Listen    string // Listen Port
 	ProcessID int
 	// Worked    bool
 }
 
-func newProject(p *Project) (out *Project, err error) {
+func updateProjectPID(id uint, pid int) (out Project, err error) {
+	if !conn.First(&out, Project{Model: gorm.Model{ID: id}}).RecordNotFound() {
+		return out, errors.New("record is exists")
+	}
+	if err := conn.Model(&out).Updates(map[string]interface{}{"process_id": pid}).Error; err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func newProject(p Project) (out Project, err error) {
 	if !conn.First(&out, Project{Name: p.Name}).RecordNotFound() {
 		return out, errors.New("record is exists")
 	}
-	if err = conn.Create(p).Error; err != nil {
+	if err = conn.Create(&p).Error; err != nil {
 		return p, err
 	}
 	return p, nil
+}
+
+func findProjects(limit, offset int) (outs []*Project, err error) {
+	if conn.Find(&outs).Limit(limit).Offset(offset).RecordNotFound() {
+		return outs, errors.New("record not found")
+	}
+	return outs, nil
 }
 
 func findProjectByID(id uint) (out Project, err error) {

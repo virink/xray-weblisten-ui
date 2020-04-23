@@ -12,6 +12,9 @@ current:
 	@go build -o ${TARGET}/${APPNAME} ${SOURCE}; \
 	echo "Done."
 
+debug: current
+	${TARGET}/${APPNAME}
+
 fmt:
 	@go fmt ./...; \
 	echo "Done."

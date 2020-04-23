@@ -1,0 +1,12 @@
+mysql:
+  host: 127.0.0.1
+  user: root
+  pass: "123456"
+  name: xray_weblisten
+  charset: utf8mb4
+xray:
+  path: /opt/xray
+  bin: xray
+server:
+  debug: true
+  port: 8088
