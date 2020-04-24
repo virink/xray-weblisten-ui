@@ -32,6 +32,7 @@ func xrayWebhookHandler(c *gin.Context) {
 	logger.Debugln(obj)
 	if obj.CreateTime > 0 {
 		params, _ := json.Marshal(&obj.Detail.Param)
+		raw, _ := json.Marshal(&obj)
 		vul := Vul{
 			CreateTime: obj.CreateTime,
 			Domain:     obj.Detail.Host,
@@ -42,6 +43,7 @@ func xrayWebhookHandler(c *gin.Context) {
 			Plugin:     obj.Plugin,
 			Params:     string(params),
 			Payload:    obj.Detail.Payload,
+			Raw:        string(raw),
 		}
 		if _, err = newVul(vul); err != nil {
 			logger.Errorln(err)
