@@ -142,7 +142,7 @@ func init() {
 	}
 	conn, _ = initConnect()
 	// Model
-	conn.DropTableIfExists(&Project{}, &Vul{})
+	// conn.DropTableIfExists(&Project{}, &Vul{})
 	conn.CreateTable(&Project{}, &Vul{})
 	xrayBin = filepath.Join(conf.Xray.Path, conf.Xray.Bin)
 	rand.Seed(time.Now().UnixNano())

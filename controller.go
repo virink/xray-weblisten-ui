@@ -41,6 +41,7 @@ func xrayWebhookHandler(c *gin.Context) {
 			VulnClass:  obj.VulnClass,
 			Plugin:     obj.Plugin,
 			Params:     string(params),
+			Payload:    obj.Detail.Payload,
 		}
 		if _, err = newVul(vul); err != nil {
 			logger.Errorln(err)

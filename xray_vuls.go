@@ -96,7 +96,7 @@ func findVulByID(id uint) (out Vul, err error) {
 }
 
 func findVulsByDomains(domain string, limit, offset int) (outs []*Vul, err error) {
-	likes := strings.Split(strings.ReplaceAll(domain, "*", "%*"), ",")
+	likes := strings.Split(strings.ReplaceAll(domain, "*", "%"), ",")
 	stmp := conn.Limit(limit).Offset(offset)
 	for _, like := range likes {
 		stmp = stmp.Or("domain LIKE ?", like)
