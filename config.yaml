@@ -9,5 +9,5 @@ xray:
   bin: xray
 server:
   debug: true
-  host: 172.17.13.62 # Server IP
+  host: 127.0.0.1 # Server IP
   port: 8088

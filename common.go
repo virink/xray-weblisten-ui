@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	// mysql driver
@@ -69,7 +68,7 @@ func templateConfig() []byte {
 	return data
 }
 
-func loadConfig() (err error) {
+func initConfig() (err error) {
 	var yamlFile []byte
 	_, err = os.Stat(configFileName)
 	if err != nil && os.IsNotExist(err) {
@@ -129,7 +128,7 @@ func initConnect() (db *gorm.DB, err error) {
 func init() {
 	logger = initLogger(loggerFilename, logrus.DebugLevel)
 	logger.AddHook(NewLogHook())
-	err := loadConfig()
+	err := initConfig()
 	if err != nil {
 		logger.Fatalln(err.Error())
 		return
@@ -142,21 +141,9 @@ func init() {
 		Timeout:   5 * time.Second,
 	}
 	conn, _ = initConnect()
-
 	// Model
+	conn.DropTableIfExists(&Project{}, &Vul{})
 	conn.CreateTable(&Project{}, &Vul{})
-
 	xrayBin = filepath.Join(conf.Xray.Path, conf.Xray.Bin)
 	rand.Seed(time.Now().UnixNano())
-}
-
-// pagination - 分页生成
-// @return limit,offset
-func pagination(page, pageSize string) (int, int) {
-	pageSizeInt, _ := strconv.Atoi(pageSize)
-	pageInt, _ := strconv.Atoi(page)
-	if pageSizeInt < 20 || pageSizeInt > 100 {
-		pageSizeInt = 20
-	}
-	return pageSizeInt, (pageInt - 1) * pageSizeInt
 }

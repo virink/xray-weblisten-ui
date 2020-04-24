@@ -34,6 +34,7 @@ func newRouter() *gin.Engine {
 	engine.GET("/stop/:id", stopProjectHandler)
 	engine.GET("/projects", getProjectsHandler)
 	engine.GET("/project/:id", getProjectHandler)
+	engine.GET("/vuls/:id", getVulsHandler)
 
 	return engine
 }

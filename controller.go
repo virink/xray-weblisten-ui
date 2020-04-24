@@ -2,33 +2,15 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/gin-gonic/gin"
-	"gopkg.in/yaml.v3"
+	"k8s.io/apimachinery/pkg/util/json"
 )
-
-func processExists(pid int) bool {
-	if err := syscall.Kill(pid, 0); err == nil {
-		return true
-	}
-	return false
-}
-
-func runXray(args []string) (pid int, err error) {
-	cmd := exec.Command(xrayBin, args...)
-	if err = cmd.Start(); err != nil {
-		return 0, err
-	}
-	return cmd.Process.Pid, nil
-}
 
 // Resp - Web Response
 type Resp struct {
@@ -49,27 +31,28 @@ func xrayWebhookHandler(c *gin.Context) {
 	}
 	logger.Debugln(obj)
 	if obj.CreateTime > 0 {
-		// TODO: Vul
+		params, _ := json.Marshal(&obj.Detail.Param)
+		vul := Vul{
+			CreateTime: obj.CreateTime,
+			Domain:     obj.Detail.Host,
+			URL:        obj.Detail.URL,
+			Title:      obj.Detail.Title,
+			Type:       obj.Detail.Type,
+			VulnClass:  obj.VulnClass,
+			Plugin:     obj.Plugin,
+			Params:     string(params),
+		}
+		if _, err = newVul(vul); err != nil {
+			logger.Errorln(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
+			return
+		}
+		// TODO: Push Message
 	} else {
 		// Stat
-		logger.Debugln("State")
+		logger.Debugln(obj)
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success"})
-}
-
-func portInUse(port int) bool {
-	output, err := exec.Command("/bin/sh", "-c", fmt.Sprintf("lsof -i:%d", port)).CombinedOutput()
-	return err == nil && len(output) > 0
-}
-
-func randomPort() (p int) {
-	for {
-		p = 30000 + rand.Intn(10000)
-		if !portInUse(p) {
-			break
-		}
-	}
-	return
 }
 
 func createProjectHandler(c *gin.Context) {
@@ -101,29 +84,6 @@ func createProjectHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: out})
 }
 
-func writeXrayConfg(obj Project) (err error) {
-	xrayConf, err := getDefaultXrayConfig()
-	if err != nil {
-		logger.Errorln(err)
-		return
-	}
-	domains := strings.Split(obj.Domain, ",")
-	xrayConf.Mitm.Restriction.Includes = domains
-	// TODO: BasicCrawler
-	// xrayConf.BasicCrawler.Restriction.Includes = domains
-	data, err := yaml.Marshal(&xrayConf)
-	if err != nil {
-		logger.Errorln(err)
-		return
-	}
-	err = ioutil.WriteFile(obj.Config, data, 0666)
-	if err != nil {
-		logger.Errorln(err)
-		return
-	}
-	return nil
-}
-
 func getProjectsHandler(c *gin.Context) {
 	var (
 		objs []*Project
@@ -136,20 +96,6 @@ func getProjectsHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: objs})
-}
-
-func getProjectHandler(c *gin.Context) {
-	var (
-		obj Project
-		err error
-	)
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if obj, err = findProjectByID(uint(id)); err != nil {
-		logger.Errorln(err.Error())
-		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: obj})
 }
 
 func startProjectHandler(c *gin.Context) {
@@ -218,4 +164,47 @@ func stopProjectHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: out})
+}
+
+func getProjectHandler(c *gin.Context) {
+	var (
+		obj Project
+		err error
+	)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if obj, err = findProjectByID(uint(id)); err != nil {
+		logger.Errorln(err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: obj})
+}
+
+func getVulsHandler(c *gin.Context) {
+	var (
+		objs    []*Vul
+		project Project
+		err     error
+		domain  string
+	)
+	// Find Vuls By Project ID -> Domain
+	// Find Vuls By Domain
+	limit, offset := pagination(c.Query("page"), c.Query("page_size"))
+	domain = c.Query("domain")
+	id, err := strconv.ParseUint(c.Query("id"), 10, 64)
+	if id > 0 {
+		if project, err = findProjectByID(uint(id)); err != nil {
+			logger.Errorln(err.Error())
+			c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+			return
+		}
+		domain = project.Domain
+	}
+	domain = strings.TrimSpace(domain)
+	if objs, err = findVulsByDomains(domain, limit, offset); err != nil {
+		logger.Errorln(err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: objs})
 }

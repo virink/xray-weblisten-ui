@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 )
@@ -23,21 +24,25 @@ type WebVul struct {
 			Key      string `json:"key"`
 			Position string `json:"position"`
 			Value    string `json:"value"`
-		} `json:"param"`
-		Payload       string `json:"payload"`
-		Port          int64  `json:"port"`
-		Request       string `json:"request"`
-		Request1      string `json:"request1"`
-		Request2      string `json:"request2"`
-		Response      string `json:"response"`
-		Response1     string `json:"response1"`
-		Response2     string `json:"response2"`
-		Title         string `json:"title"`
-		Type          string `json:"type"`
-		URL           string `json:"url"`
-		ExpectedValue string `json:"expected_value"`
-		HeaderName    string `json:"header_name"`
-		HeaderValue   string `json:"header_value"`
+		} `json:"param,omitempty"`
+		Payload            string `json:"payload"`
+		Port               int64  `json:"port"`
+		Request            string `json:"request"`
+		Response           string `json:"response"`
+		Request1           string `json:"request1,omitempty"`
+		Response1          string `json:"response1,omitempty"`
+		Request2           string `json:"request2,omitempty"`
+		Response2          string `json:"response2,omitempty"`
+		Request3           string `json:"request3,omitempty"`
+		Response3          string `json:"response3,omitempty"`
+		Title              string `json:"title"`
+		Type               string `json:"type"`
+		URL                string `json:"url"`
+		ExpectedValue      string `json:"expected_value,omitempty"`
+		HeaderName         string `json:"header_name,omitempty"`
+		HeaderValue        string `json:"header_value,omitempty"`
+		ConfirmRetry       string `json:"confirm_retry,omitempty"`
+		ConfirmRetryResult string `json:"confirm_retry_result,omitempty"`
 	} `json:"detail"`
 	Plugin string `json:"plugin"`
 	Target struct {
@@ -46,7 +51,7 @@ type WebVul struct {
 			Position string   `json:"position"`
 		} `json:"params"`
 		URL string `json:"url"`
-	} `json:"target"`
+	} `json:"target,omitempty"`
 	Type      string `json:"type"`
 	VulnClass string `json:"vuln_class"`
 }
@@ -54,21 +59,23 @@ type WebVul struct {
 // Vul - 被动扫描项目
 type Vul struct {
 	gorm.Model
-	Domain    string `json:"domain"` // xxx,xxx,xxx
-	Title     string `json:"title"`
-	Type      string `json:"type"`
-	URL       string `json:"url"`
-	Payload   string `json:"payload"`
-	Plugin    string `json:"plugin"`
-	VulnClass string `json:"vuln_class"`
-	Raw       string `gorm:"type:text" json:"-"`
+	URL        string `gorm:"type:varchar(200);unique_index" json:"url"`
+	Domain     string `json:"domain"` // xxx,xxx,xxx
+	Title      string `json:"title"`
+	Type       string `json:"type"`
+	Payload    string `json:"payload"`
+	Params     string `json:"params"`
+	Plugin     string `json:"plugin"`
+	VulnClass  string `json:"vuln_class"`
+	CreateTime int64  `json:"create_time"`
+	Raw        string `gorm:"type:text" json:"-"`
 }
 
-func newVul(p *Vul) (out *Vul, err error) {
-	if !conn.First(&out, Vul{Domain: p.Domain}).RecordNotFound() {
+func newVul(p Vul) (out Vul, err error) {
+	if !conn.First(&out, Vul{URL: p.URL}).RecordNotFound() {
 		return out, errors.New("record is exists")
 	}
-	if err = conn.Create(p).Error; err != nil {
+	if err = conn.Create(&p).Error; err != nil {
 		return p, err
 	}
 	return p, nil
@@ -88,9 +95,14 @@ func findVulByID(id uint) (out Vul, err error) {
 	return out, nil
 }
 
-func findVulByName(domain string) (out Vul, err error) {
-	if conn.First(&out, Vul{Domain: domain}).RecordNotFound() {
-		return out, errors.New("record not found")
+func findVulsByDomains(domain string, limit, offset int) (outs []*Vul, err error) {
+	likes := strings.Split(strings.ReplaceAll(domain, "*", "%*"), ",")
+	stmp := conn.Limit(limit).Offset(offset)
+	for _, like := range likes {
+		stmp = stmp.Or("domain LIKE ?", like)
 	}
-	return out, nil
+	if stmp.Find(&outs).RecordNotFound() {
+		return outs, errors.New("record not found")
+	}
+	return outs, nil
 }
