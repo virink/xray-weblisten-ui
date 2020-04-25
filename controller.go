@@ -12,9 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/jinzhu/gorm"
-
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 	"gopkg.in/yaml.v3"
 )
 
