@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -10,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/jinzhu/gorm"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
@@ -47,14 +50,92 @@ func xrayWebhookHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
-	//logger.Debugln(obj)
-	if obj.CreateTime > 0 {
+	logger.Debugln(obj)
+	if obj.Type == "web_vuln" {
 		// TODO: Vul
-		// 根据插件来判断取的json格式输出
 
-	} else {
-		// Stat
+		// 创建空的字段
+		var vul = Vul{
+			Model:      gorm.Model{},
+			URL:        "", // 漏洞路径 *
+			Domain:     "", // Host头 *
+			Title:      "",
+			Type:       "",
+			Payload:    "", // 利用方法 *
+			Params:     "",
+			Plugin:     "", // 插件 *
+			VulnClass:  "", // 漏洞类型 *
+			CreateTime: 0,
+			Raw:        "", // 特别大，可以考虑去掉
+		}
+
+		switch {
+		case obj.Plugin == "dirscan":
+			// 路径扫描格式
+			raw, _ := json.Marshal(&obj.Detail)
+			vul = Vul{
+				CreateTime: obj.CreateTime,
+				Domain:     obj.Detail.Host,
+				URL:        obj.Target.URL,
+				Title:      obj.Plugin,
+				Type:       obj.Plugin,
+				VulnClass:  obj.VulnClass,
+				Plugin:     obj.Plugin,
+				Params:     obj.Detail.Filename,
+				Payload:    obj.Target.URL,
+				Raw:        string(raw),
+			}
+
+		case strings.HasPrefix(obj.Plugin, "poc-"):
+			// 自定义格式poc格式
+			params, _ := json.Marshal(&obj.Detail.Param)
+			raw, _ := json.Marshal(&obj.Detail)
+			vul = Vul{
+				CreateTime: obj.CreateTime,
+				Domain:     obj.Detail.Host,
+				URL:        obj.Target.URL,
+				Title:      obj.Plugin,
+				Type:       obj.Plugin,
+				VulnClass:  obj.VulnClass,
+				Plugin:     obj.Plugin,
+				Params:     string(params),
+				Payload:    obj.Detail.Request,
+				Raw:        string(raw),
+			}
+
+		default:
+			// 默认格式
+			params, _ := json.Marshal(&obj.Detail.Param)
+			raw, _ := json.Marshal(&obj.Detail)
+			vul = Vul{
+				CreateTime: obj.CreateTime,
+				Domain:     obj.Detail.Host,
+				URL:        obj.Detail.URL,
+				Title:      obj.Detail.Title,
+				Type:       obj.Detail.Type,
+				VulnClass:  obj.VulnClass,
+				Plugin:     obj.Plugin,
+				Params:     string(params),
+				Payload:    obj.Detail.Payload,
+				Raw:        string(raw),
+			}
+		}
+
+		if _, err = newVul(&vul); err != nil {
+			logger.Errorln(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
+			return
+		}
+
+	} else if obj.Type == "web_statistic" {
+		// Statistic
+		// num_found_urls - num_scanned_urls == 0 可以认为扫描结束了
 		logger.Debugln("State")
+		num_of_remain_scans := obj.NumFoundUrls - obj.NumScannedUrls
+		if num_of_remain_scans == 0 {
+			// 扫描完成
+		}
+
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success"})
 }

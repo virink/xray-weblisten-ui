@@ -55,16 +55,17 @@ type WebVul struct {
 // Vul - 被动扫描项目
 type Vul struct {
 	gorm.Model
-	Domain    string `json:"domain"` // xxx,xxx,xxx
-	Title     string `json:"title"`
-	Type      string `json:"type"`
-	URL       string `json:"url"`
-	Payload   string `json:"payload"`
-	Plugin    string `json:"plugin"`
-	VulnClass string `json:"vuln_class"`
-	Raw       string `gorm:"type:text" json:"-"`
+	URL        string `gorm:"type:varchar(200);unique_index" json:"url"`
+	Domain     string `json:"domain"` // xxx,xxx,xxx
+	Title      string `json:"title"`
+	Type       string `json:"type"`
+	Payload    string `gorm:"type:text" json:"payload"`
+	Params     string `json:"params"`
+	Plugin     string `json:"plugin"`
+	VulnClass  string `json:"vuln_class"`
+	CreateTime int64  `json:"create_time"`
+	Raw        string `gorm:"type:text" json:"-"`
 }
-
 func newVul(p *Vul) (out *Vul, err error) {
 	if !conn.First(&out, Vul{Domain: p.Domain}).RecordNotFound() {
 		return out, errors.New("record is exists")
