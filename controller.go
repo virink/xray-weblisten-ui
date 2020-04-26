@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -9,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
-	"k8s.io/apimachinery/pkg/util/json"
 )
 
 // Resp - Web Response
@@ -30,30 +30,50 @@ func xrayWebhookHandler(c *gin.Context) {
 		return
 	}
 	logger.Debugln(obj)
-	if obj.CreateTime > 0 {
-		params, _ := json.Marshal(&obj.Detail.Param)
-		raw, _ := json.Marshal(&obj)
+	if obj.Type == "web_vuln" {
+		raw, _ := json.Marshal(&obj.Detail)
 		vul := Vul{
 			CreateTime: obj.CreateTime,
 			Domain:     obj.Detail.Host,
 			URL:        obj.Detail.URL,
-			Title:      obj.Detail.Title,
-			Type:       obj.Detail.Type,
+			Raw:        string(raw),
 			VulnClass:  obj.VulnClass,
 			Plugin:     obj.Plugin,
-			Params:     string(params),
-			Payload:    obj.Detail.Payload,
-			Raw:        string(raw),
+		}
+		switch {
+		case obj.Plugin == "dirscan":
+			// 路径扫描格式
+			vul.Title = obj.Plugin
+			vul.Type = obj.Plugin
+			vul.Params = obj.Detail.Filename
+			vul.Payload = obj.Target.URL
+		case strings.HasPrefix(obj.Plugin, "poc-"):
+			// 自定义格式poc格式
+			params, _ := json.Marshal(&obj.Detail.Param)
+			vul.Title = obj.Plugin
+			vul.Type = obj.Plugin
+			vul.Params = string(params)
+			vul.Payload = obj.Detail.Request
+		default:
+			// 默认格式
+			params, _ := json.Marshal(&obj.Detail.Param)
+			vul.Title = obj.Detail.Title
+			vul.Type = obj.Detail.Type
+			vul.Params = string(params)
+			vul.Payload = obj.Detail.Payload
 		}
 		if _, err = newVul(vul); err != nil {
 			logger.Errorln(err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
 			return
 		}
-		// TODO: Push Message
-	} else {
-		// Stat
-		logger.Debugln(obj)
+	} else if obj.Type == "web_statistic" {
+		// Statistic
+		// num_found_urls - num_scanned_urls == 0 可以认为扫描结束了
+		if obj.NumFoundUrls == obj.NumScannedUrls {
+			// 扫描完成
+			logger.Debugln("Finish")
+		}
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success"})
 }

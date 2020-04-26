@@ -43,6 +43,7 @@ type WebVul struct {
 		HeaderValue        string `json:"header_value,omitempty"`
 		ConfirmRetry       string `json:"confirm_retry,omitempty"`
 		ConfirmRetryResult string `json:"confirm_retry_result,omitempty"`
+		Filename           string `json:"filename,omitempty"`
 	} `json:"detail"`
 	Plugin string `json:"plugin"`
 	Target struct {
@@ -63,7 +64,7 @@ type Vul struct {
 	Domain     string `json:"domain"` // xxx,xxx,xxx
 	Title      string `json:"title"`
 	Type       string `json:"type"`
-	Payload    string `json:"payload"`
+	Payload    string `gorm:"type:text" json:"payload"`
 	Params     string `json:"params"`
 	Plugin     string `json:"plugin"`
 	VulnClass  string `json:"vuln_class"`
