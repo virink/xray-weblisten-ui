@@ -69,7 +69,7 @@ type Vul struct {
 	Plugin     string `json:"plugin"`
 	VulnClass  string `json:"vuln_class"`
 	CreateTime int64  `json:"create_time"`
-	Raw        string `gorm:"type:text" json:"-"`
+	Raw        string `gorm:"type:text" json:"raw"`
 }
 
 func newVul(p Vul) (out Vul, err error) {

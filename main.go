@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +28,18 @@ func newRouter() *gin.Engine {
 	engine := gin.Default()
 
 	engine.POST(webhook, xrayWebhookHandler)
+
+	engine.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT, DELETE")
+		c.Header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Accept")
+		c.Header("Access-Control-Max-Age", "1800")
+		if strings.ToUpper(c.Request.Method) == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	})
 	// TODO: AddRouter
 	engine.POST("/project", createProjectHandler)
 	// engine.PUT("/project/:id", updateProjectHandler)
