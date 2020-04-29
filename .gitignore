@@ -40,3 +40,5 @@ build
 
 .idea/
 .DS_Store
+
+deploy.yaml

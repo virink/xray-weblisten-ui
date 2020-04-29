@@ -54,6 +54,10 @@ import {
 } from '@/service'
 import JSONEditor from 'jsoneditor'
 import 'jsoneditor/dist/jsoneditor.min.css'
+import moment from 'moment';
+import 'moment/locale/zh-cn'
+moment.locale('zh-cn')
+
 export default {
   name: 'Vuls',
   watch: {
@@ -94,7 +98,7 @@ export default {
             payload: e.payload,
             plugin: e.plugin,
             type: e.type,
-            found: e.create_time,
+            found: moment(e.create_time).format('YYYY-MM-DD HH:mm:ss'),
             vuln_class: e.vuln_class,
             raw: e.raw,
           })
