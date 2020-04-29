@@ -41,13 +41,21 @@ func newRouter() *gin.Engine {
 		c.Next()
 	})
 	// TODO: AddRouter
-	engine.POST("/project", createProjectHandler)
-	// engine.PUT("/project/:id", updateProjectHandler)
-	engine.GET("/start/:id", startProjectHandler)
-	engine.GET("/stop/:id", stopProjectHandler)
-	engine.GET("/projects", getProjectsHandler)
-	engine.GET("/project/:id", getProjectHandler)
-	engine.GET("/vuls", getVulsHandler)
+	apiGroup := engine.Group("/api")
+	{
+		apiGroup.POST("/project", createProjectHandler)
+		// apiGroup.PUT("/project/:id", updateProjectHandler)
+		apiGroup.GET("/start/:id", startProjectHandler)
+		apiGroup.GET("/stop/:id", stopProjectHandler)
+		apiGroup.GET("/projects", getProjectsHandler)
+		apiGroup.GET("/project/:id", getProjectHandler)
+		apiGroup.GET("/vuls", getVulsHandler)
+	}
+
+	engine.StaticFS("/static", FS(false))
+	engine.GET("/", func(c *gin.Context) {
+		c.Redirect(302, "/static")
+	})
 
 	return engine
 }

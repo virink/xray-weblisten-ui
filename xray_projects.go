@@ -42,10 +42,18 @@ func newProject(p Project) (out Project, err error) {
 }
 
 func findProjects(limit, offset int) (outs []*Project, err error) {
-	if conn.Find(&outs).Limit(limit).Offset(offset).RecordNotFound() {
+	if conn.Limit(limit).Offset(offset).Order("id desc").Find(&outs).RecordNotFound() {
 		return outs, errors.New("record not found")
 	}
 	return outs, nil
+}
+
+func getProjectsCount() (count int) {
+	var err error
+	if err = conn.Model(&Project{}).Count(&count).Error; err != nil {
+		return -1
+	}
+	return count
 }
 
 func findProjectByID(id uint) (out Project, err error) {

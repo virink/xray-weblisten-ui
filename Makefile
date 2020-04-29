@@ -67,3 +67,11 @@ clean:
 	@rm -rf ${TARGET}/* ; \
 	go clean ./... ; \
 	echo "Done."
+
+ui:
+	@echo "Build frontend";
+	cd frontend && yarn build;
+	# cp -r frontend/dist static;
+	# esc -o static.go -pkg="main" static;
+	# rm -rf static;
+	cd frontend/dist && esc -o ../../static.go -pkg="main" .;

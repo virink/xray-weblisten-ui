@@ -109,8 +109,9 @@ func createProjectHandler(c *gin.Context) {
 
 func getProjectsHandler(c *gin.Context) {
 	var (
-		objs []*Project
-		err  error
+		objs  []*Project
+		count int
+		err   error
 	)
 	limit, offset := pagination(c.Query("page"), c.Query("page_size"))
 	if objs, err = findProjects(limit, offset); err != nil {
@@ -118,7 +119,20 @@ func getProjectsHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: objs})
+	if count = getProjectsCount(); count == -1 {
+		msg := "Cannot get count"
+		logger.Errorln(msg)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: msg})
+		return
+	}
+	// isRunning
+	// for _,obj := range objs {
+	// 	// obj.Listen
+	// 	// obj.ProcessID
+	// }
+	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: map[string]interface{}{
+		"count": count, "objs": objs,
+	}})
 }
 
 func startProjectHandler(c *gin.Context) {

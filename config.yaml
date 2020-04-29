@@ -5,7 +5,7 @@ mysql:
   name: xray_weblisten
   charset: utf8mb4
 xray:
-  path: /tmp/xray
+  path: /opt/xray
   bin: xray
 server:
   debug: true

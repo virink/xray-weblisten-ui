@@ -10,7 +10,7 @@ const request = axios.create({
 const pageSize = 20
 
 export function fetchProjects(page = 1, page_size = pageSize) {
-    return request.get("/projects", {
+    return request.get("/api/projects", {
         params: {
             page: page,
             page_size: page_size
@@ -19,15 +19,15 @@ export function fetchProjects(page = 1, page_size = pageSize) {
 }
 
 export function fetchProject(id) {
-    return request.get(`/project/${id}`)
+    return request.get(`/api/project/${id}`)
 }
 
 export function startProject(id) {
-    return request.get(`/start/${id}`)
+    return request.get(`/api/start/${id}`)
 }
 
 export function stopProject(id) {
-    return request.get(`/stop/${id}`)
+    return request.get(`/api/stop/${id}`)
 }
 
 export function fetchVuls(pid, page = 1, page_size = pageSize) {
@@ -40,13 +40,13 @@ export function fetchVuls(pid, page = 1, page_size = pageSize) {
     } else {
         params["domain"] = pid
     }
-    return request.get(`/vuls`, {
+    return request.get(`/api/vuls`, {
         params: params
     })
 }
 
 export function createProject(form) {
-    return request.post("project", {
+    return request.post("/api/project", {
         name: form.name,
         domain: form.domain,
         plugins: form.plugins.toString(),
