@@ -23,7 +23,7 @@
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="createProjectDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="createProjectDialogVisible = false">确 定</el-button>
+        <el-button type="primary" @click="createProject">确 定</el-button>
       </span>
     </el-dialog>
     <el-table 
@@ -31,7 +31,6 @@
       border
       :data="tableData" 
       :row-class-name="tableRowClassName"
-      :default-sort = "{prop: 'date', order: 'descending'}"
       @selection-change="handleSelectionChange"
       style="width: 100%" >
       <el-table-column type="selection" fixed width="55"></el-table-column>
@@ -42,7 +41,7 @@
       <el-table-column prop="process_id" label="进程ID"></el-table-column>
       <el-table-column label="操作" fixed="right">
         <template slot-scope="scope">
-          <el-button size="mini" type="primary" @click="handleDetail(scope.$index, scope.row)">详情</el-button>
+          <el-button size="mini" type="primary" @click="handleDetail(scope.$index, scope.row)" disabled>详情</el-button>
           <el-button size="mini" 
             :type="isRunning(scope.row)?'danger':'success'"
             @click="handleToggle(scope.$index, scope.row)">
@@ -75,7 +74,8 @@ const pluginOptions = [
 import {
   fetchProjects,
   startProject,
-  stopProject
+  stopProject,
+  createProject
 } from '@/service'
 
 export default {
@@ -104,7 +104,7 @@ export default {
       this.loading = true
       fetchProjects(this.pager.current).then(resp => {
         var newData = []
-        resp.data.code == 0 && resp.data.data.forEach((e) => {
+        resp.data.code == 0 && (this.pager.total = resp.data.data.count) && resp.data.data.objs.forEach((e) => {
           newData.push({
             id: e.ID,
             name: e.name,
@@ -163,6 +163,8 @@ export default {
     },
     handleCurrentChange(val) {
       console.log(`当前页: ${val}`);
+      this.pager.current = val
+      this.getProjects()
     },
     createProjectDialogOpen(){
       this.form = this.newProjectForm()
@@ -172,6 +174,16 @@ export default {
     },
     handleCheckedPluginsChange(value) {
       this.form.checkAll = value.length === this.pluginOptions.length;
+    },
+    createProject(){
+      this.createProjectDialogVisible = false
+      this.loading = true
+      console.log(this.form)
+      createProject(this.form).then(resp => {
+        console.log(resp)
+        resp.data.code == 0 && this.getProjects()
+        this.loading = false
+      })
     }
   }
 }

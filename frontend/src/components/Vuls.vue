@@ -1,27 +1,59 @@
 <template>
-  <div class="vuls">
+  <div class="vuls block">
     <div v-if="loading" class="loading">Loading...</div>
-    <div v-if="error" class="error">{{ error }}</div>
-    <el-select v-model="currentProject" clearable placeholder="请选择项目">
-      <el-option
-        v-for="item in options"
-        :key="item.value"
-        :label="item.label"
-        :value="item.value">
-      </el-option>
-    </el-select>
+    <el-dialog
+      title="Raw"
+      :visible.sync="dialogVisible"
+      @opened="vulRawDialogOpened"
+      width="80%">
+      <div id="editor"></div>
+    </el-dialog>
+
     <el-card class="box-card" v-for="vul in vuls" :key="vul.id" >
       <div slot="header" class="clearfix">
-        <span>{{vul.name}}</span>
+        <span>{{vul.title}}</span>
+        <el-button style="float: right; padding: 3px 0" @click="openRawDialog(vul)" type="text">Raw</el-button>
       </div>
-      <div v-for="o in 4" :key="o" class="text item">
-        {{'列表内容 ' + o }}
-      </div>
+      <el-row>
+        <el-col :span="4"><div class="grid-title">URL</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.url}}</div></el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="4"><div class="grid-title">Type</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.type}}</div></el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="4"><div class="grid-title">Payload</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.payload}}</div></el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="4"><div class="grid-title">Params</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.aprmas}}</div></el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="4"><div class="grid-title">Plugin</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.plugin}}</div></el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="4"><div class="grid-title">VulnClass</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.vuln_class}}</div></el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="4"><div class="grid-title">Found</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.found}}</div></el-col>
+      </el-row>
     </el-card>
+
   </div>
 </template>
 
 <script>
+
+import {
+  fetchVuls
+} from '@/service'
+import JSONEditor from 'jsoneditor'
+import 'jsoneditor/dist/jsoneditor.min.css'
 export default {
   name: 'Vuls',
   watch: {
@@ -29,55 +61,83 @@ export default {
   },
   data(){
     return {
+      timer: null,
       id: this.$route.params.id,
       loading: false,
+      dialogVisible:false,
+      currentRaw: null,
       error: null,
-      currentProject: '',
-      options: [{
-        value: '选项1',
-        label: '黄金糕'
-      }],
-      vuls:[
-        {
-          id:1,
-          name:'aaa'
-        },
-        {
-          id:2,
-          name:'bbb'
-        },
-        {
-          id:3,
-          name:'ccc'
-        }]
+      editor:null,
+      vuls:[]
     }
   },
   created() {
-    console.log("id",this.id)
-    // this.fetchData()
+    this.fetchData()
+    this.timer = setInterval(this.fetchData,10*1000)
+  },
+  beforeDestroy() {
+    clearInterval(this.timer)
   },
   methods: {
     fetchData () {
       this.error = this.post = null
       this.loading = true
-      // replace getPost with your data fetching util / API wrapper
-      // getPost(this.$route.params.id, (err, post) => {
-      //   this.loading = false
-      //   if (err) {
-      //     this.error = err.toString()
-      //   } else {
-      //     this.post = post
-      //   }
-      // })
+      fetchVuls(this.id).then(resp => {
+        this.loading = false
+        var vuls = []
+        resp.data.code == 0 && resp.data.data.forEach(e=>{
+          vuls.push({
+            id: e.ID,
+            title: e.title,
+            url: e.url,
+            params: e.params,
+            payload: e.payload,
+            plugin: e.plugin,
+            type: e.type,
+            found: e.create_time,
+            vuln_class: e.vuln_class,
+            raw: e.raw,
+          })
+        })
+        this.vuls = vuls
+      })
+    },
+    openRawDialog(vul){
+      try{
+        let obj = JSON.parse(vul.raw)
+        this.currentRaw = obj
+        this.dialogVisible = true
+      }catch(e){
+        this.$message.error(e.toString());
+      }
+    },
+    vulRawDialogOpened(){
+      if(!this.editor){
+        this.editor = new JSONEditor(document.getElementById("editor"),{})
+      }
+      this.editor.set(this.currentRaw)
     }
   },
 }
 </script>
 
 <style scoped>
+
 .box-card {
-  width: 480px;
-  padding: 5px;
-  margin: 10px;
+  width: 800px;
+  padding: 10px;
+  margin: 20px auto;
+}
+
+.grid-title {
+  border-radius: 4px;
+  min-height: 36px;
+  font-size: 18px;
+  text-align: left;
+}
+.grid-content {
+  border-radius: 4px;
+  min-height: 36px;
+  text-align: left;
 }
 </style>
