@@ -29,7 +29,6 @@ func xrayWebhookHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
-	logger.Debugln(obj)
 	if obj.Type == "web_vuln" {
 		raw, _ := json.Marshal(&obj.Detail)
 		vul := Vul{
@@ -68,6 +67,9 @@ func xrayWebhookHandler(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
 			return
 		}
+		go pushFeishuMessage("发现漏洞", fmt.Sprintf(`Title: %s
+Plugin: %s
+URL:   %s`, vul.Title, vul.Plugin, vul.URL))
 	} else if obj.Type == "web_statistic" {
 		// Statistic
 		// num_found_urls - num_scanned_urls == 0 可以认为扫描结束了

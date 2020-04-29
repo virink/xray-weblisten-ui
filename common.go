@@ -38,9 +38,10 @@ type Config struct {
 		Bin  string `yaml:"bin"`
 	} `yaml:"xray"`
 	Server struct {
-		Debug bool   `yaml:"debug"`
-		Port  int    `yaml:"port"`
-		Host  string `yaml:"host"`
+		Debug  bool   `yaml:"debug"`
+		Port   int    `yaml:"port"`
+		Host   string `yaml:"host"`
+		Pusher string `yaml:"pusher"`
 	} `yaml:"server"`
 }
 
@@ -126,7 +127,7 @@ func initConnect() (db *gorm.DB, err error) {
 }
 
 func init() {
-	logger = initLogger(loggerFilename, logrus.DebugLevel)
+	logger = initLogger(loggerFilename, logrus.WarnLevel)
 	logger.AddHook(NewLogHook())
 	err := initConfig()
 	if err != nil {

@@ -11,3 +11,4 @@ server:
   debug: true
   host: 0.0.0.0 # Server IP
   port: 8088
+  pusher: ""
