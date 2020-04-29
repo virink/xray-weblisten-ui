@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -75,4 +77,11 @@ func pagination(page, pageSize string) (int, int) {
 		pageSizeInt = 20
 	}
 	return pageSizeInt, (pageInt - 1) * pageSizeInt
+}
+
+// MD5 -
+func MD5(text string) string {
+	ctx := md5.New()
+	_, _ = ctx.Write([]byte(text))
+	return hex.EncodeToString(ctx.Sum(nil))
 }

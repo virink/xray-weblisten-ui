@@ -15,6 +15,10 @@
         <el-button style="float: right; padding: 3px 0" @click="openRawDialog(vul)" type="text">Raw</el-button>
       </div>
       <el-row>
+        <el-col :span="4"><div class="grid-title">Title</div></el-col>
+        <el-col :span="20"><div class="grid-content">{{vul.title}}</div></el-col>
+      </el-row>
+      <el-row>
         <el-col :span="4"><div class="grid-title">URL</div></el-col>
         <el-col :span="20"><div class="grid-content">{{vul.url}}</div></el-col>
       </el-row>

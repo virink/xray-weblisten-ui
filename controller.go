@@ -62,6 +62,7 @@ func xrayWebhookHandler(c *gin.Context) {
 			vul.Params = string(params)
 			vul.Payload = obj.Detail.Payload
 		}
+		vul.Hash = MD5(vul.URL + vul.Plugin)
 		if _, err = newVul(vul); err != nil {
 			logger.Errorln(err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})

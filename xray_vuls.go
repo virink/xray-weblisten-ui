@@ -60,7 +60,8 @@ type WebVul struct {
 // Vul - 被动扫描项目
 type Vul struct {
 	gorm.Model
-	URL        string `gorm:"type:varchar(200);unique_index" json:"url"`
+	Hash       string `gorm:"type:varchar(32);unique_index" json:"-"`
+	URL        string `gorm:"type:varchar(200)" json:"url"`
 	Domain     string `json:"domain"` // xxx,xxx,xxx
 	Title      string `json:"title"`
 	Type       string `json:"type"`
@@ -73,7 +74,7 @@ type Vul struct {
 }
 
 func newVul(p Vul) (out Vul, err error) {
-	if !conn.First(&out, Vul{URL: p.URL}).RecordNotFound() {
+	if !conn.First(&out, Vul{Hash: p.Hash}).RecordNotFound() {
 		return out, errors.New("record is exists")
 	}
 	if err = conn.Create(&p).Error; err != nil {
