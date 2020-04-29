@@ -9,7 +9,7 @@ import (
 
 // FeishuData -
 type FeishuData struct {
-	Title string `json:"title,omitempty"`
+		Title string `json:"title,omitempty"`
 	Text  string `json:"text"`
 }
 

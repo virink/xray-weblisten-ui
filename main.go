@@ -16,9 +16,12 @@ import (
 var (
 	signalChan chan os.Signal
 	httpServer *http.Server
+
+	statistic map[int]int64
 )
 
 func newRouter() *gin.Engine {
+
 	if conf.Server.Debug {
 		gin.SetMode(gin.DebugMode)
 	} else {

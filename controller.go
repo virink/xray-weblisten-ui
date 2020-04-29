@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,6 +47,13 @@ func xrayWebhookHandler(c *gin.Context) {
 			vul.Type = obj.Plugin
 			vul.Params = obj.Detail.Filename
 			vul.Payload = obj.Target.URL
+		case obj.Plugin == "sqldet":
+			// SQL注入
+			params, _ := json.Marshal(&obj.Detail.Param)
+			vul.Title = obj.Detail.Title
+			vul.Type = obj.Detail.Type
+			vul.Params = string(params)
+			vul.Payload = obj.Detail.Payload
 		case strings.HasPrefix(obj.Plugin, "poc-"):
 			// 自定义格式poc格式
 			params, _ := json.Marshal(&obj.Detail.Param)
@@ -56,7 +64,7 @@ func xrayWebhookHandler(c *gin.Context) {
 		default:
 			// 默认格式
 			params, _ := json.Marshal(&obj.Detail.Param)
-			vul.Title = obj.Detail.Title
+			vul.Title = obj.Plugin
 			vul.Type = obj.Detail.Type
 			vul.Params = string(params)
 			vul.Payload = obj.Detail.Payload
@@ -72,10 +80,44 @@ Plugin: %s
 URL:   %s`, vul.Title, vul.Plugin, vul.URL))
 	} else if obj.Type == "web_statistic" {
 		// Statistic
+		pid, err := strconv.Atoi(c.Param("pid"))
+		if err != nil{
+			logger.Errorln(err.Error())
+			return
+		}
 		// num_found_urls - num_scanned_urls == 0 可以认为扫描结束了
 		if obj.NumFoundUrls == obj.NumScannedUrls {
 			// 扫描完成
 			logger.Debugln("Finish")
+			logger.Debug(pid)
+			if _, flag := statistic[pid]; !flag {
+				// 创建pid时间戳
+				statistic[pid] = time.Now().Unix()
+			}else{
+				if time.Now().Unix() - statistic[pid] > 3600 {
+					// 空闲超过1小时，主动结束
+					defer delete(statistic, pid)
+
+					// 缺少根据ProcessID超着项目ID，能够停止，但无法更新项目状态！
+					if pid == 0 || !processExists(pid) {
+						c.JSON(http.StatusOK, Resp{Code: 0, Msg: "It's not running"})
+						return
+					}
+					if err = syscall.Kill(pid, 15); err != nil {
+						logger.Errorln(err)
+						c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+						return
+					}
+					//out, err := updateProjectPidAndListenPort(uint(id), 0, obj.Listen)
+					//if err != nil {
+					//	logger.Errorln(err.Error())
+					//	c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+					//	return
+					//}
+
+				}
+			}
+
 		}
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success"})
@@ -178,10 +220,12 @@ func startProjectHandler(c *gin.Context) {
 }
 
 func stopProjectHandler(c *gin.Context) {
+
 	var (
 		obj Project
 		err error
 	)
+
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if obj, err = findProjectByID(uint(id)); err != nil {
 		logger.Errorln(err.Error())
@@ -203,6 +247,9 @@ func stopProjectHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
+
+	// 删除statics的pid值
+	delete(statistic, obj.ProcessID)
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: out})
 }
 
