@@ -80,44 +80,59 @@ Plugin: %s
 URL:   %s`, vul.Title, vul.Plugin, vul.URL))
 	} else if obj.Type == "web_statistic" {
 		// Statistic
-		pid, err := strconv.Atoi(c.Param("pid"))
-		if err != nil{
-			logger.Errorln(err.Error())
+		project:= c.Param("project")
+		if project == ""{
 			return
 		}
 		// num_found_urls - num_scanned_urls == 0 可以认为扫描结束了
 		if obj.NumFoundUrls == obj.NumScannedUrls {
 			// 扫描完成
 			logger.Debugln("Finish")
-			logger.Debug(pid)
-			if _, flag := statistic[pid]; !flag {
+			logger.Debug(project)
+			if _, flag := statistic[project]; !flag {
 				// 创建pid时间戳
-				statistic[pid] = time.Now().Unix()
+				statistic[project] = time.Now().Unix()
 			}else{
-				if time.Now().Unix() - statistic[pid] > 3600 {
-					// 空闲超过1小时，主动结束
-					defer delete(statistic, pid)
+				if time.Now().Unix() - statistic[project] > 3600 {
 
-					// 缺少根据ProcessID超着项目ID，能够停止，但无法更新项目状态！
-					if pid == 0 || !processExists(pid) {
+					var (
+						obj Project
+						err error
+					)
+
+					// 空闲超过1小时，主动结束
+					defer delete(statistic, project)
+
+					if obj ,err = findProjectByName(project); err !=nil{
+						logger.Errorln(err.Error())
+						c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+						return
+					}
+					//缺少根据ProcessID超着项目ID，能够停止，但无法更新项目状态！
+					if obj.ProcessID == 0 || !processExists(obj.ProcessID) {
 						c.JSON(http.StatusOK, Resp{Code: 0, Msg: "It's not running"})
 						return
 					}
-					if err = syscall.Kill(pid, 15); err != nil {
+					if err = syscall.Kill(obj.ProcessID, 15); err != nil {
 						logger.Errorln(err)
 						c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
 						return
 					}
-					//out, err := updateProjectPidAndListenPort(uint(id), 0, obj.Listen)
-					//if err != nil {
-					//	logger.Errorln(err.Error())
-					//	c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
-					//	return
-					//}
+					_, err = updateProjectPidAndListenPort(uint(obj.ID), 0, obj.Listen)
+					if err != nil {
+						logger.Errorln(err.Error())
+						c.AbortWithStatusJSON(http.StatusInternalServerError, Resp{Code: 1, Msg: err.Error()})
+						return
+					}
 
 				}
 			}
 
+		}else {
+			if _,flag := statistic[project]; flag{
+				//更新当前的时间戳
+				statistic[project] = time.Now().Unix()
+			}
 		}
 	}
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success"})
@@ -249,7 +264,7 @@ func stopProjectHandler(c *gin.Context) {
 	}
 
 	// 删除statics的pid值
-	delete(statistic, obj.ProcessID)
+	delete(statistic, obj.Name)
 	c.JSON(http.StatusOK, Resp{Code: 0, Msg: "success", Data: out})
 }
 

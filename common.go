@@ -21,7 +21,7 @@ const (
 	configFileName = "config.yaml"
 	loggerFilename = "weblisten.log"
 	xrayConfigPath = "/tmp/"
-	webhook        = "/vul_webhook/:pid"
+	webhook        = "/vul_webhook/:project"
 )
 
 // Config - Config
