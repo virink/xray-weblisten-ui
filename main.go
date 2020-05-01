@@ -17,7 +17,7 @@ var (
 	signalChan chan os.Signal
 	httpServer *http.Server
 
-	statistic map[string]int64
+	statistic = make(map[string]int64)
 )
 
 func newRouter() *gin.Engine {

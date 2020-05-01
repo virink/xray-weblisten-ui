@@ -30,6 +30,8 @@ func xrayWebhookHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, Resp{Code: 1, Msg: err.Error()})
 		return
 	}
+
+
 	if obj.Type == "web_vuln" {
 		raw, _ := json.Marshal(&obj.Detail)
 		vul := Vul{
@@ -81,6 +83,7 @@ URL:   %s`, vul.Title, vul.Plugin, vul.URL))
 	} else if obj.Type == "web_statistic" {
 		// Statistic
 		project:= c.Param("project")
+
 		if project == ""{
 			return
 		}
@@ -89,6 +92,7 @@ URL:   %s`, vul.Title, vul.Plugin, vul.URL))
 			// 扫描完成
 			logger.Debugln("Finish")
 			logger.Debug(project)
+
 			if _, flag := statistic[project]; !flag {
 				// 创建pid时间戳
 				statistic[project] = time.Now().Unix()
@@ -213,10 +217,13 @@ func startProjectHandler(c *gin.Context) {
 	if obj.Listen <= 0 || portInUse(obj.Listen) {
 		obj.Listen = randomPort()
 	}
+
+	newwebhook := "/vul_webhook/" + obj.Name
+
 	xrayArgs := []string{
 		"--config", obj.Config,
 		"webscan", "--listen", fmt.Sprintf("0.0.0.0:%d", obj.Listen),
-		"--webhook-output", fmt.Sprintf("http://%s:%d%s", conf.Server.Host, conf.Server.Port, webhook),
+		"--webhook-output", fmt.Sprintf("http://%s:%d%s", conf.Server.Host, conf.Server.Port, newwebhook),
 		"--plugins", obj.Plugins,
 	}
 	logger.Debugln(xrayArgs)
